@@ -431,6 +431,10 @@
         }
 
         window.onload = function() { calculateAll(); };
+
+        if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
     </script>
 </body>
 </html>
