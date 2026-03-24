@@ -1,6 +1,6 @@
 {
-  "name": "Simulador Hipotecario GG",
-  "short_name": "HipotecaGG",
+  "name": "Simulador Hipotecario BGG",
+  "short_name": "HipotecaBGG",
   "description": "Calculadora de viabilidad e informe hipotecario",
   "start_url": "index.html",
   "display": "standalone",
