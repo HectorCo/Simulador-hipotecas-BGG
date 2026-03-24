@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Hipotecario - Gestion Global</title>
+    
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>€</text></svg>">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .bg-card { background: #ffffff; border: 1px solid #e2e8f0; }
+        .highlight-yellow { background-color: #fffbeb; border: 1px solid #fbbf24; }
+        .progress-bar { transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+
+        .header-gradient {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+
+        /* Estilos Tooltip */
+        .tooltip-container {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            cursor: help;
+            margin-left: 4px;
+        }
+        .tooltip-text {
+            visibility: hidden;
+            width: 260px;
+            background-color: #0f172a;
+            color: #fff;
+            text-align: left;
+            border-radius: 8px;
+            padding: 12px;
+            position: absolute;
+            z-index: 50;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: all 0.2s ease;
+            font-size: 11px;
+            line-height: 1.4;
+            pointer-events: none;
+            text-transform: none;
+            font-weight: 400;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .tooltip-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        #extraContributionContainer {
+            transition: all 0.5s ease;
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+        }
+        #extraContributionContainer.visible {
+            opacity: 1;
+            max-height: 300px;
+            margin-top: 1rem;
+        }
+
+        @media print {
+            @page { 
+                size: A4; 
+                margin: 0.8cm; 
+            }
+            body { 
+                background: white !important; 
+                font-size: 12px;
+            }
+            nav, button, footer, .no-print, .tooltip-container { display: none !important; }
+            .lg\:col-span-4 { display: none !important; }
+            .lg\:col-span-8 { width: 100% !important; grid-column: span 12 / span 12 !important; }
+            
+            .bg-white { 
+                page-break-inside: avoid !important; 
+                border: 1px solid #e2e8f0 !important;
+                box-shadow: none !important;
+                margin-bottom: 10px !important;
+                padding: 15px !important;
+            }
+
+            #mainResultsGrid {
+                display: grid !important;
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 10px !important;
+            }
+
+            #investmentDetail {
+                padding: 20px !important;
+                margin-top: 10px !important;
+            }
+
+            .text-3xl { font-size: 1.5rem !important; }
+            .text-2xl { font-size: 1.25rem !important; }
+            
+            #printHeader { 
+                display: flex !important; 
+                border-bottom: 2px solid #0f172a; 
+                padding-bottom: 10px; 
+                margin-bottom: 15px; 
+                justify-content: space-between;
+                align-items: center;
+            }
+            #notesArea { 
+                display: block !important; 
+                margin-top: 10px; 
+                border-top: 1px dashed #ccc; 
+                padding-top: 10px; 
+            }
+            #notesLine { height: 60px !important; }
+        }
+
+        #printHeader, #notesArea { display: none; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen pb-16">
+
+    <nav class="header-gradient text-white py-5 mb-8 shadow-xl border-b border-slate-800 no-print">
+        <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-5">
+                <div class="flex items-center justify-center bg-white p-2.5 rounded-xl shadow-lg border border-slate-200 min-w-[140px] h-14 overflow-hidden">
+                    <img src="https://bgestionglobal.com/wp-content/themes/yootheme/cache/8e/logo-bg-500x113px-8ebce5b3.webp" alt="Logo Gestion Global" class="h-full w-auto max-h-10 object-contain">
+                </div>
+                <div class="text-left">
+                    <h1 class="text-xl font-extrabold tracking-tight text-white">Simulador <span class="text-blue-400">Hipotecario</span></h1>
+                </div>
+            </div>
+            <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 00-2 2h2m2 4h10a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                Imprimir Informe
+            </button>
+        </div>
+    </nav>
+
+    <!-- Informe PDF Header -->
+    <div id="printHeader" class="max-w-6xl mx-auto px-6">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tighter uppercase">Informe Hipotecario</h1>
+            <p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Gestion Global · Consultoría Inmobiliaria</p>
+            <p id="printDate" class="text-[9px] text-slate-400 mt-0.5"></p>
+        </div>
+        <div class="h-12">
+            <img src="https://bgestionglobal.com/wp-content/themes/yootheme/cache/8e/logo-bg-500x113px-8ebce5b3.webp" alt="Logo" class="h-full w-auto object-contain">
+        </div>
+    </div>
+
+    <div class="max-w-6xl mx-auto px-4">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- Formulario (No se imprime) -->
+            <div class="lg:col-span-4 space-y-6 no-print">
+                <div class="bg-card p-7 rounded-[2rem] shadow-sm border border-slate-200">
+                    <h2 class="text-xs font-black text-slate-400 mb-8 uppercase tracking-widest">Configuración</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Precio Compraventa (€)</label>
+                            <input type="number" id="purchasePrice" oninput="calculateAll()" class="highlight-yellow w-full p-3 rounded-xl border border-yellow-200 font-black text-slate-800 text-lg shadow-inner" placeholder="0">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <div class="flex items-center mb-1">
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase">Impuestos (%)</label>
+                                    <div class="tooltip-container">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        <span class="tooltip-text">El ITP general más gastos de gestoría y notaría se reduce al 7% para jóvenes menores de 35 años, es del 9% cuando uno es mayor de 35 y otro menor de 35 y es de un 11% cuando compra uno solo mayor de 35 o dos mayores de 35 años.</span>
+                                    </div>
+                                </div>
+                                <input type="number" id="taxPercent" oninput="calculateAll()" class="highlight-yellow w-full p-3 rounded-xl border border-yellow-200 font-black text-slate-800 shadow-inner" placeholder="0">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Gestión (€)</label>
+                                <input type="number" id="mgmtFees" oninput="calculateAll()" class="highlight-yellow w-full p-3 rounded-xl border border-yellow-200 font-black text-slate-800 shadow-inner" placeholder="0">
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex items-center mb-1">
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase">Ahorros Cliente (€)</label>
+                                <div class="tooltip-container">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    <span class="tooltip-text">Capital líquido disponible para la compra. Se restará del coste total para calcular la hipoteca.</span>
+                                </div>
+                            </div>
+                            <input type="number" id="clientCash" oninput="calculateAll()" class="highlight-yellow w-full p-3 rounded-xl border border-yellow-200 font-black text-slate-800 shadow-inner" placeholder="0">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Interés (%)</label>
+                                <input type="number" id="interestRate" step="0.01" oninput="calculateAll()" class="highlight-yellow w-full p-3 rounded-xl border border-yellow-200 font-black text-slate-800 shadow-inner" placeholder="0">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Años</label>
+                                <input type="number" id="years" oninput="calculateAll()" class="highlight-yellow w-full p-3 rounded-xl border border-yellow-200 font-black text-slate-800 shadow-inner" placeholder="0">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Ingresos Mes (€)</label>
+                            <input type="number" id="monthlyIncome" oninput="calculateAll()" class="highlight-yellow w-full p-3 rounded-xl border border-yellow-200 font-black text-slate-800 shadow-inner" placeholder="0">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <div class="flex items-center mb-1">
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase">Otros Préstamos</label>
+                                    <div class="tooltip-container">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        <span class="tooltip-text">Sumatorio de cuotas mensuales actuales (coche, personales, tarjetas). Reduce el ratio de endeudamiento.</span>
+                                    </div>
+                                </div>
+                                <input type="number" id="otherLoans" oninput="calculateAll()" class="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 font-black text-rose-700 shadow-inner" placeholder="0">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Metros m²</label>
+                                <input type="number" id="squareMeters" oninput="calculateAll()" class="highlight-yellow w-full p-3 rounded-xl border border-yellow-200 font-black text-slate-800 shadow-inner" placeholder="0">
+                            </div>
+                        </div>
+                        <button onclick="resetData()" class="w-full py-2 text-[10px] font-bold text-slate-400 uppercase border border-slate-200 rounded-xl hover:bg-rose-50 hover:text-rose-500 transition-all">Limpiar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resultados -->
+            <div class="lg:col-span-8 space-y-4">
+                
+                <div id="mainResultsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white p-6 rounded-[1.5rem] border border-slate-200 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center mb-1">
+                                <p class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Capital Hipotecario</p>
+                                <div class="tooltip-container">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    <span class="tooltip-text">Cantidad total que se solicitará al banco. Se calcula sumando el precio, impuestos y gastos, y restando los ahorros aportados.</span>
+                                </div>
+                            </div>
+                            <p id="resLoanAmount" class="text-3xl font-black text-slate-900 tracking-tighter">0 €</p>
+                        </div>
+                        <div class="mt-4">
+                            <div class="flex justify-between items-end text-[10px] font-black mb-1">
+                                <span class="text-slate-400 uppercase">LTV (Financiación)</span>
+                                <span id="resLTVPercent" class="text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
+                                <div id="ltvBar" class="progress-bar bg-blue-600 h-full rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col gap-3"> 
+                        <div class="bg-white p-6 rounded-[1.5rem] border border-slate-200 shadow-sm flex justify-between items-center">
+                            <div>
+                                <p class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Cuota Mensual</p>
+                                <p id="resMonthlyPayment" class="text-3xl font-black text-blue-700 tracking-tighter">0 €</p>
+                            </div>
+                            <div class="text-right border-l pl-4 border-slate-100">
+                                <div class="flex items-center justify-end mb-1">
+                                    <p class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Ratio</p>
+                                    <div class="tooltip-container">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        <span class="tooltip-text">Porcentaje de los ingresos netos destinado al pago de la hipoteca. Lo ideal es mantenerse por debajo del 35%.</span>
+                                    </div>
+                                </div>
+                                <p id="resDebtRatio" class="text-xl font-black text-slate-800 tracking-tighter">0%</p>
+                            </div>
+                        </div>
+                        <div id="ratioStatusBox" class="p-3 rounded-xl text-[10px] font-black text-center border shadow-sm flex items-center justify-center min-h-[50px] uppercase">
+                            -- CALCULANDO --
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detalle Económico -->
+                <div id="investmentDetail" class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-md border-t-4 border-t-blue-600">
+                    <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
+                        <h3 class="text-lg font-black text-slate-800 tracking-tight">Presupuesto de Inversión</h3>
+                        <div class="text-right">
+                            <span class="text-[9px] text-slate-400 font-bold uppercase tracking-widest block">Inversión Bruta</span>
+                            <span id="resTotalInvestment" class="text-xl font-black text-slate-900 tracking-tighter">0 €</span>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center py-3 bg-blue-50/50 px-4 rounded-xl border border-blue-100">
+                                <span class="text-[10px] font-black text-blue-900 uppercase tracking-widest">Precio Venta:</span>
+                                <span id="resPurchasePrice" class="font-black text-blue-900 text-xl tracking-tighter">0 €</span>
+                            </div>
+
+                            <div class="flex justify-between items-center py-1.5 border-b border-slate-100">
+                                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider italic">Impuestos:</span>
+                                <span id="resTaxAmount" class="font-black text-slate-800 tracking-tight">0 €</span>
+                            </div>
+                            <div class="flex justify-between items-center py-1.5 border-b border-slate-100">
+                                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider italic">Gestión:</span>
+                                <span id="resMgmtFees" class="font-black text-slate-800 tracking-tight">0 €</span>
+                            </div>
+                            
+                            <div class="flex justify-between items-center py-3 bg-emerald-50 px-4 rounded-xl border border-emerald-100 mt-4">
+                                <span class="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Ahorros Aportados</span>
+                                <span id="resCashAmount" class="font-black text-emerald-700 text-xl tracking-tighter">0 €</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                             <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100 flex flex-col justify-center">
+                                <div class="flex justify-between items-center mb-4">
+                                    <span class="text-[9px] font-black text-slate-400 uppercase">Ratio Tasación</span>
+                                    <span id="resPricePerMeter" class="font-black text-slate-800 text-xs">0 €/m²</span>
+                                </div>
+                                <div class="flex flex-col">
+                                    <div class="flex items-center mb-1">
+                                        <span class="text-[9px] font-black text-indigo-500 uppercase">Valor Tasación Objetivo</span>
+                                        <div class="tooltip-container">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            <span class="tooltip-text">Precio mínimo en el que debe ser tasada la vivienda para que el banco conceda el 80% del capital necesario.</span>
+                                        </div>
+                                    </div>
+                                    <span id="resMinAppraisal" class="text-2xl font-black text-indigo-800 tracking-tighter">0 €</span>
+                                </div>
+                             </div>
+                             <div id="extraContributionContainer" class="bg-rose-50 border border-rose-200 p-4 rounded-xl text-center">
+                                <p class="text-[9px] font-extrabold text-rose-500 uppercase mb-1">⚠️ APORTACIÓN EXTRA</p>
+                                <p id="resExtraContribution" class="text-xl font-black text-rose-700 tracking-tighter">0 €</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="notesArea">
+                    <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Observaciones y Notas:</p>
+                    <div id="notesLine" class="h-24 border-b border-slate-200"></div>
+                </div>
+
+                <footer class="text-center py-4 no-print">
+                    <p class="text-[9px] text-slate-400 font-black uppercase tracking-[0.3em]">Gestion Global © 2026</p>
+                </footer>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const inputIds = ['purchasePrice', 'taxPercent', 'mgmtFees', 'clientCash', 'interestRate', 'years', 'monthlyIncome', 'otherLoans', 'squareMeters'];
+        
+        function format(val) { return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(val); }
+
+        function calculateAll() {
+            const now = new Date();
+            document.getElementById('printDate').innerText = "Informe emitido el " + now.toLocaleDateString() + " a las " + now.toLocaleTimeString();
+
+            const price = parseFloat(document.getElementById('purchasePrice').value) || 0;
+            const taxPct = (parseFloat(document.getElementById('taxPercent').value) || 0) / 100;
+            const mgmt = parseFloat(document.getElementById('mgmtFees').value) || 0;
+            const cash = parseFloat(document.getElementById('clientCash').value) || 0;
+            const rateYear = (parseFloat(document.getElementById('interestRate').value) || 0) / 100;
+            const years = parseFloat(document.getElementById('years').value) || 0;
+            const income = parseFloat(document.getElementById('monthlyIncome').value) || 0;
+            const otherDebt = parseFloat(document.getElementById('otherLoans').value) || 0;
+            const meters = parseFloat(document.getElementById('squareMeters').value) || 0;
+
+            const taxAmount = price * taxPct;
+            const totalInvestment = price + taxAmount + mgmt;
+            const loanToAsk = totalInvestment - cash;
+            const ltv = price > 0 ? (loanToAsk / price) : 0;
+            
+            const r = rateYear / 12;
+            const n = years * 12;
+            let monthlyPayment = 0;
+            if (r > 0 && n > 0) monthlyPayment = loanToAsk * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+            else if (n > 0) monthlyPayment = loanToAsk / n;
+
+            const netIncome = Math.max(0, income - otherDebt);
+            const debtRatio = netIncome > 0 ? (monthlyPayment / netIncome) : (monthlyPayment > 0 ? 1 : 0);
+
+            // UI Update
+            const resPriceElems = document.querySelectorAll('#resPurchasePrice');
+            resPriceElems.forEach(el => el.innerText = format(price));
+            
+            document.getElementById('resLoanAmount').innerText = format(loanToAsk);
+            document.getElementById('resLTVPercent').innerText = (ltv * 100).toFixed(2) + "%";
+            document.getElementById('ltvBar').style.width = Math.min(ltv * 100, 100) + "%";
+            document.getElementById('resMonthlyPayment').innerText = format(monthlyPayment);
+            document.getElementById('resDebtRatio').innerText = (debtRatio * 100).toFixed(2) + "%";
+            document.getElementById('resTaxAmount').innerText = format(taxAmount);
+            document.getElementById('resMgmtFees').innerText = format(mgmt);
+            document.getElementById('resTotalInvestment').innerText = format(totalInvestment);
+            document.getElementById('resCashAmount').innerText = format(cash);
+            document.getElementById('resPricePerMeter').innerText = format(meters > 0 ? price / meters : 0) + "/m²";
+            document.getElementById('resMinAppraisal').innerText = format(loanToAsk / 0.8);
+
+            const statusBox = document.getElementById('ratioStatusBox');
+            const extraBox = document.getElementById('extraContributionContainer');
+            
+            if (price <= 0) {
+                statusBox.innerText = "PENDIENTE DE DATOS";
+                statusBox.className = "p-3 rounded-xl text-[10px] font-black text-center border bg-slate-50 text-slate-400 flex items-center justify-center min-h-[50px]";
+                extraBox.classList.remove('visible');
+            } else if (ltv > 1 || debtRatio > 0.40) {
+                statusBox.innerText = "DENEGADA: RIESGO ELEVADO";
+                statusBox.className = "p-3 rounded-xl text-[10px] font-black text-center border bg-rose-50 text-rose-700 border-rose-200 shadow-sm flex items-center justify-center min-h-[50px]";
+                extraBox.classList.add('visible');
+                
+                const targetPay = netIncome * 0.4;
+                let loanByDebt = targetPay * ((Math.pow(1 + r, n) - 1) / (r * Math.pow(1 + r, n)));
+                const extraLTV = Math.max(0, loanToAsk - price);
+                const extraDebt = Math.max(0, loanToAsk - loanByDebt);
+                document.getElementById('resExtraContribution').innerText = format(Math.max(extraLTV, extraDebt));
+            } else {
+                statusBox.innerText = debtRatio > 0.35 ? "VIABILIDAD CONDICIONADA" : "OPERACIÓN VIABLE";
+                statusBox.className = debtRatio > 0.35 ? "p-3 rounded-xl text-[10px] font-black text-center border bg-orange-50 text-orange-700 border-orange-200 flex items-center justify-center min-h-[50px]" : "p-3 rounded-xl text-[10px] font-black text-center border bg-emerald-50 text-emerald-700 border-emerald-200 flex items-center justify-center min-h-[50px]";
+                extraBox.classList.remove('visible');
+            }
+        }
+
+        function resetData() {
+            inputIds.forEach(id => { document.getElementById(id).value = ""; });
+            calculateAll();
+        }
+
+        window.onload = function() { calculateAll(); };
+    </script>
+</body>
+</html>
